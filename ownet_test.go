@@ -41,3 +41,16 @@ func TestWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestListDevices(t *testing.T) {
+	ow := New(srv)
+	defer ow.Close()
+
+	devs, err := ow.ListDevices()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("devs: %+v\n", devs)
+}
+
+

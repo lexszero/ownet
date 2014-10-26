@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"net"
 	"fmt"
+	"regexp"
 	"encoding/binary"
 	"strings"
 )
@@ -44,6 +45,8 @@ type OWErr int32
 func (e OWErr) Error() string {
 	return fmt.Sprintf("owserver returned error %v", int32(e))
 }
+
+var reDevice = regexp.MustCompile("[0-9A-F]{2}\\.[0-9A-F]{12}")
 
 func New(address string) *OW {
 	if address == "" {
@@ -169,4 +172,36 @@ func (ow *OW) Write(path string, offset int, data []byte) (err error) {
 		return
 	}
 	return
+}
+
+func (ow *OW) ListDevices() (devs []string, err error) {
+	var dir []string
+	dir, err = ow.Dir("/")
+	if err != nil {
+		return
+	}
+	for _, item := range dir {
+		dev := reDevice.FindString(item)
+		if dev != "" {
+			devs = append(devs, dev)
+		}
+	}
+	return
+}
+
+func (ow *OW) GetAttr(device, attr string) (string, error) {
+	buf := make([]byte, 16, 16)
+	if n, err := ow.Read(fmt.Sprintf("/%s/%s", device, attr), 0, buf); err != nil {
+		return "", err
+	} else {
+		return string(buf[:n]), nil
+	}
+}
+
+func (ow *OW) SetAttr(device, attr, value string) (error) {
+	return ow.Write(fmt.Sprint("/%s/%s", device, attr), 0, []byte(value))
+}
+
+func (ow *OW) GetType(device string) (string, error) {
+	return ow.GetAttr(device, "type")
 }
