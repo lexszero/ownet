@@ -1,43 +1,43 @@
 package ownet
 
 import (
-	"time"
 	"bytes"
-	"net"
-	"fmt"
-	"regexp"
 	"encoding/binary"
+	"fmt"
+	"net"
+	"regexp"
 	"strings"
+	"time"
 )
 
 type OW struct {
 	address string
-	conn net.Conn
-	hdrbuf []byte
-	sg int32
+	conn    net.Conn
+	hdrbuf  []byte
+	sg      int32
 }
 
 type header struct {
 	Version int32
 	Payload int32
-	Type int32
-	Flags int32
-	Size int32
-	Offset int32
+	Type    int32
+	Flags   int32
+	Size    int32
+	Offset  int32
 }
 
 const (
-	MsgError uint32 = iota
-	MsgNop			= iota
-	MsgRead			= iota
-	MsgWrite		= iota
-	MsgDir			= iota
-	MsgSize			= iota
-	MsgPresence		= iota
-	MsgDirAll		= iota
-	MsgGet			= iota
-	MsgDirAllSlash	= iota
-	MsgGetSlash		= iota
+	MsgError       uint32 = iota
+	MsgNop                = iota
+	MsgRead               = iota
+	MsgWrite              = iota
+	MsgDir                = iota
+	MsgSize               = iota
+	MsgPresence           = iota
+	MsgDirAll             = iota
+	MsgGet                = iota
+	MsgDirAllSlash        = iota
+	MsgGetSlash           = iota
 )
 
 type OWErr int32
@@ -54,12 +54,12 @@ func New(address string) *OW {
 	}
 	return &OW{
 		address: address,
-		sg: 0x102,	// some magic flags value
+		sg:      0x102, // some magic flags value
 	}
 }
 
 func (ow *OW) dial() (err error) {
-	ow.conn, err = net.DialTimeout("tcp", ow.address, time.Second * 30)
+	ow.conn, err = net.DialTimeout("tcp", ow.address, time.Second*30)
 	return
 }
 
@@ -78,11 +78,11 @@ func (ow *OW) msgRead(payload []byte) (hdr header, n int, err error) {
 	if err = binary.Read(ow.conn, binary.BigEndian, &hdr); err != nil {
 		return
 	}
-//	log.Printf("<- %+v\n", hdr)
+	//log.Printf("<- %+v\n", hdr)
 	if hdr.Payload > 0 && len(payload) >= int(hdr.Payload) {
 		n, err = ow.conn.Read(payload[:hdr.Payload])
 	}
-//	log.Printf("<- n:%v payload:%v\n", n, string(payload))
+	//log.Printf("<- n:%v payload:%v\n", n, string(payload))
 	return
 }
 
@@ -94,8 +94,8 @@ func (ow *OW) msgWrite(hdr header, payload []byte) (err error) {
 		}
 	}
 	var buf bytes.Buffer
-//	log.Printf("-> %+v\n", hdr)
-//	log.Printf("-> payload: %v\n", string(payload))
+	//log.Printf("-> %+v\n", hdr)
+	//log.Printf("-> payload: %v\n", string(payload))
 	binary.Write(&buf, binary.BigEndian, hdr)
 	buf.Write(payload)
 	for ; buf.Len() > 0 && err == nil; _, err = buf.WriteTo(ow.conn) {
@@ -107,10 +107,10 @@ func (ow *OW) Dir(path string) (items []string, err error) {
 	ret := make([]byte, 4096, 4096)
 	hdr := header{
 		Version: 0,
-		Payload: int32(len(path)+1),
-		Type: MsgDirAll,
-		Flags: ow.sg,
-		Size: int32(len(ret)),
+		Payload: int32(len(path) + 1),
+		Type:    MsgDirAll,
+		Flags:   ow.sg,
+		Size:    int32(len(ret)),
 	}
 	err = ow.msgWrite(hdr, append([]byte(path), 0))
 	if err != nil {
@@ -129,11 +129,11 @@ func (ow *OW) Dir(path string) (items []string, err error) {
 func (ow *OW) Read(path string, offset int, data []byte) (n int, err error) {
 	hdr := header{
 		Version: 0,
-		Payload: int32(len(path)+1),
-		Type: MsgRead,
-		Flags: ow.sg,
-		Size: int32(len(data)),
-		Offset: int32(offset),
+		Payload: int32(len(path) + 1),
+		Type:    MsgRead,
+		Flags:   ow.sg,
+		Size:    int32(len(data)),
+		Offset:  int32(offset),
 	}
 	err = ow.msgWrite(hdr, append([]byte(path), 0))
 	if err != nil {
@@ -154,10 +154,10 @@ func (ow *OW) Write(path string, offset int, data []byte) (err error) {
 	hdr := header{
 		Version: 0,
 		Payload: int32(len(path) + 1 + len(data)),
-		Type: MsgWrite,
-		Flags: ow.sg,
-		Size: int32(len(data)),
-		Offset: int32(offset),
+		Type:    MsgWrite,
+		Flags:   ow.sg,
+		Size:    int32(len(data)),
+		Offset:  int32(offset),
 	}
 	err = ow.msgWrite(hdr, append(append([]byte(path), 0), data...))
 	if err != nil {
@@ -198,7 +198,7 @@ func (ow *OW) GetAttr(device, attr string) (string, error) {
 	}
 }
 
-func (ow *OW) SetAttr(device, attr, value string) (error) {
+func (ow *OW) SetAttr(device, attr, value string) error {
 	return ow.Write(fmt.Sprint("/%s/%s", device, attr), 0, []byte(value))
 }
 

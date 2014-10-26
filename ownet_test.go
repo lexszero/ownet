@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	srv = "192.168.0.10:4304"
+	srv  = "192.168.0.10:4304"
 	attr = "/3A.BEE71B000000/PIO.B"
 )
 
@@ -52,5 +52,3 @@ func TestListDevices(t *testing.T) {
 	}
 	t.Logf("devs: %+v\n", devs)
 }
-
-
