@@ -1,0 +1,7 @@
+Go package to interact with owserver (1-Wire protocol daemon) via TCP socket
+
+TODO:
+* documentation
+* better error handling
+* ping support
+* old dir method
