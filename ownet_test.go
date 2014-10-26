@@ -11,7 +11,6 @@ const (
 
 func TestDir(t *testing.T) {
 	ow := New(srv)
-	defer ow.Close()
 
 	dir, err := ow.Dir("/")
 	if err != nil {
@@ -22,7 +21,6 @@ func TestDir(t *testing.T) {
 
 func TestRead(t *testing.T) {
 	ow := New(srv)
-	defer ow.Close()
 
 	buf := make([]byte, 16, 16)
 	n, err := ow.Read(attr, 0, buf)
@@ -34,7 +32,6 @@ func TestRead(t *testing.T) {
 
 func TestWrite(t *testing.T) {
 	ow := New(srv)
-	defer ow.Close()
 
 	err := ow.Write(attr, 0, []byte("1"))
 	if err != nil {
@@ -44,7 +41,6 @@ func TestWrite(t *testing.T) {
 
 func TestListDevices(t *testing.T) {
 	ow := New(srv)
-	defer ow.Close()
 
 	devs, err := ow.ListDevices()
 	if err != nil {
