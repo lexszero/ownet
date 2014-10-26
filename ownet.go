@@ -7,6 +7,7 @@ import (
 	"net"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -15,6 +16,7 @@ type OW struct {
 	conn    net.Conn
 	hdrbuf  []byte
 	sg      int32
+	sync.Mutex
 }
 
 type header struct {
@@ -64,17 +66,13 @@ func (ow *OW) dial() (err error) {
 }
 
 func (ow *OW) Close() {
-	ow.conn.Close()
-	ow.conn = nil
+	if ow.conn != nil {
+		ow.conn.Close()
+		ow.conn = nil
+	}
 }
 
 func (ow *OW) msgRead(payload []byte) (hdr header, n int, err error) {
-	if ow.conn == nil {
-		err = ow.dial()
-		if err != nil {
-			return
-		}
-	}
 	if err = binary.Read(ow.conn, binary.BigEndian, &hdr); err != nil {
 		return
 	}
@@ -104,6 +102,15 @@ func (ow *OW) msgWrite(hdr header, payload []byte) (err error) {
 }
 
 func (ow *OW) Dir(path string) (items []string, err error) {
+	ow.Lock()
+	defer ow.Unlock()
+
+	err = ow.dial()
+	if err != nil {
+		return
+	}
+	defer ow.Close()
+
 	ret := make([]byte, 4096, 4096)
 	hdr := header{
 		Version: 0,
@@ -127,6 +134,15 @@ func (ow *OW) Dir(path string) (items []string, err error) {
 }
 
 func (ow *OW) Read(path string, offset int, data []byte) (n int, err error) {
+	ow.Lock()
+	defer ow.Unlock()
+
+	err = ow.dial()
+	if err != nil {
+		return
+	}
+	defer ow.Close()
+
 	hdr := header{
 		Version: 0,
 		Payload: int32(len(path) + 1),
@@ -151,6 +167,15 @@ func (ow *OW) Read(path string, offset int, data []byte) (n int, err error) {
 }
 
 func (ow *OW) Write(path string, offset int, data []byte) (err error) {
+	ow.Lock()
+	defer ow.Unlock()
+
+	err = ow.dial()
+	if err != nil {
+		return
+	}
+	defer ow.Close()
+
 	hdr := header{
 		Version: 0,
 		Payload: int32(len(path) + 1 + len(data)),
@@ -199,7 +224,7 @@ func (ow *OW) GetAttr(device, attr string) (string, error) {
 }
 
 func (ow *OW) SetAttr(device, attr, value string) error {
-	return ow.Write(fmt.Sprint("/%s/%s", device, attr), 0, []byte(value))
+	return ow.Write(fmt.Sprintf("/%s/%s", device, attr), 0, []byte(value))
 }
 
 func (ow *OW) GetType(device string) (string, error) {
