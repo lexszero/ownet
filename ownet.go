@@ -28,6 +28,7 @@ type header struct {
 	Offset  int32
 }
 
+// OWNet message types
 const (
 	MsgError       uint32 = iota
 	MsgNop                = iota
@@ -48,8 +49,11 @@ func (e OWErr) Error() string {
 	return fmt.Sprintf("owserver returned error %v", int32(e))
 }
 
-var reDevice = regexp.MustCompile("[0-9A-F]{2}\\.[0-9A-F]{12}")
+// Regexp matching device identifiers as shown in owserver root directory
+var DeviceRegex = regexp.MustCompile("[0-9A-F]{2}\\.[0-9A-F]{12}")
 
+// Create a new OWNet client object. Supply owserver address in "host:port" format.
+// Connection will be established on first request.
 func New(address string) *OW {
 	if address == "" {
 		address = "127.0.0.1:4304"
@@ -65,6 +69,7 @@ func (ow *OW) dial() (err error) {
 	return
 }
 
+// Close connection to owserver.
 func (ow *OW) Close() {
 	if ow.conn != nil {
 		ow.conn.Close()
@@ -101,6 +106,8 @@ func (ow *OW) msgWrite(hdr header, payload []byte) (err error) {
 	return
 }
 
+// Get listing of specified directory.
+// Returns array with directory items names and error if any.
 func (ow *OW) Dir(path string) (items []string, err error) {
 	ow.Lock()
 	defer ow.Unlock()
@@ -133,6 +140,8 @@ func (ow *OW) Dir(path string) (items []string, err error) {
 	return strings.Split(string(ret), ","), err
 }
 
+// Read owserver file with path starting from offset into data.
+// Returns number of read bytes and error if any.
 func (ow *OW) Read(path string, offset int, data []byte) (n int, err error) {
 	ow.Lock()
 	defer ow.Unlock()
@@ -166,6 +175,8 @@ func (ow *OW) Read(path string, offset int, data []byte) (n int, err error) {
 	return
 }
 
+// Write data to owserver file at path starting from offset.
+// Returns nil on success, otherwise error.
 func (ow *OW) Write(path string, offset int, data []byte) (err error) {
 	ow.Lock()
 	defer ow.Unlock()
@@ -199,6 +210,8 @@ func (ow *OW) Write(path string, offset int, data []byte) (err error) {
 	return
 }
 
+// Get list of present devices on the bus. Devices identified with DeviceRegex.
+// Returns array of device identifiers and error if any.
 func (ow *OW) ListDevices() (devs []string, err error) {
 	var dir []string
 	dir, err = ow.Dir("/")
@@ -206,7 +219,7 @@ func (ow *OW) ListDevices() (devs []string, err error) {
 		return
 	}
 	for _, item := range dir {
-		dev := reDevice.FindString(item)
+		dev := DeviceRegex.FindString(item)
 		if dev != "" {
 			devs = append(devs, dev)
 		}
@@ -214,6 +227,8 @@ func (ow *OW) ListDevices() (devs []string, err error) {
 	return
 }
 
+// Get value of attribute attr of the device.
+// Returns attribute value and error if any.
 func (ow *OW) GetAttr(device, attr string) (string, error) {
 	buf := make([]byte, 16, 16)
 	if n, err := ow.Read(fmt.Sprintf("/%s/%s", device, attr), 0, buf); err != nil {
@@ -223,10 +238,16 @@ func (ow *OW) GetAttr(device, attr string) (string, error) {
 	}
 }
 
+// Set value of attribute attr of the device to value.
+// Returns nil on success, error otherwise.
 func (ow *OW) SetAttr(device, attr, value string) error {
 	return ow.Write(fmt.Sprintf("/%s/%s", device, attr), 0, []byte(value))
 }
 
+// Get type of the device. Equal to GetAttr(device, "type).
+// Refer to owfs documentation for possible device types and their corresponding
+// sets of attributes.
+// Returns device type and error if any.
 func (ow *OW) GetType(device string) (string, error) {
 	return ow.GetAttr(device, "type")
 }
